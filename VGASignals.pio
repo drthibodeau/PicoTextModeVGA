@@ -1,0 +1,105 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+; SET pin 0 should be mapped to your LED GPIO
+
+
+; IRQ 5 controls vsync line count
+; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
+.program SYNC
+ 
+.wrap_target
+; ---------------------------- HSYNC -------------------------------------  
+
+PUBLIC hsync_start:                         ; PUBLIC will make the label visible under program struct in C     
+    
+    set pins 1                              
+    
+hsync_loop: 
+
+;  ACTIVE AREA = 32*24 + 1 + 32 = 801 cycles 
+    set y, 31 [31]                          ; 32 cyles, 1st pixel sent on this instruction   
+h_active_loop:                              
+    jmp y-- h_active_loop [23]              ; 32*24 cycles      
+    nop [20]                                ; 1 cycle + 20 for fornt Porch. last pixel sent at end of this instruction (i think)
+    
+; FRONT PORCH = 20 cycles
+
+; HSYNC PULSE = 1 + 19 + 100 = 120 cycles                                           
+    set pins 0                              ;  1 cycle. last instruction of front porch, VSYNC waiting for this signal to start code for each line                                      
+    set y, 24 [18]                          ;  19 cycles
+h_pulse_loop:                                
+    jmp y-- h_pulse_loop [3]                ; 25*4 = 100   
+       
+; BACK PORCH = 32 + 25 + 2 + 1 = 60 cycles    
+    set pins 1 [31]                        ; 32 cycle                      
+    nop [24]                                ; 25
+    irq clear 5 [1]                         ; 2 cycles. vsync prog tests if last active vert line (on the DELAY cycle)                                               
+    jmp hsync_loop                          ; 1 cycle.               
+
+
+; ------------------------------- VSYNC --------------------------------------
+; timing notes: 
+;   set pins = 3 has to come on the second instruction after irq wait 5. This sets the gpio 14 high 
+PUBLIC vsync_start:                        ; PUBLIC will make the label visible under program struct in C     
+     
+    set pins 3   
+ vsync_loop:    
+    set pins 1                             ; toggling on start-up to get the loop back toggle right. Otherwise first line will get missed on start up  
+    out x, 32                              ; using auto pull, which seems to do a first pull on startup
+   
+v_active_loop: 
+    irq wait 5                             ; set and wait on hsync to clear irq towards end of line    
+    jmp !x v_end_active                    ; last hsync delay
+    set pins 3                             ; last hsync instruction. Start pixel output routine on next pixel cycle.  Need pixel start delay to accommodate jump to hsync loop   
+    set pins 1                             ; toggle pixel enable.  
+    jmp x-- v_active_loop                   
+    
+v_end_active:                                
+    out x, 32
+    irq set 0                              ; set irq 0 to refill vsync loop counters 
+v_frontp_loop:                             ; FRONT PORCH 10 lines
+    irq wait 5                             ; set and wait on hsync to clear irq towards end of line        
+    jmp x-- v_frontp_loop                   
+
+; VSYNC PULSE
+  ;  nop                                   ; I need a byte. the third cycle after irq wait is first cycle of new line. should burn one cycle here but it seems to work  
+    set pins 0
+    irq wait 5                             ; VSYNC pulse 2 lines
+    irq wait 5 [1]                          
+    out x, 32                                
+    set pins 1                             ; set pin on first cycle of new line (third cycle after wait) 
+   
+v_backp_loop:                              ; back porch 33 lines
+    irq wait 5                             ; set and wait on hsync to clear irq towards end of line        
+    jmp x-- v_backp_loop   
+
+    set pins 3                             ; last hsync instruction. Start pixel output routine on next pixel cycle.  Need pixel start delay to accommodate jump to hsync loop 
+    jmp vsync_loop 
+   
+   .wrap
+
+
+; GPIO 14 controls pixel output, turned on and off by vsync program
+; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
+.program PIXEL
+ 
+.wrap_target  
+
+    out x,32               ; this is the loop size (using autopull)
+  
+pixel_reset:
+    mov y,x
+    wait 1 gpio 14 
+    nop                   ; adds a delay so that first pixel out lines up with hysnc active count. On test monitor this gives the lowest clock phase adjustment 
+pixel_loop:  
+    out pins, 1 [3]        ; 5 cycles of output until pixel change (3 delays + jmp + next out pins). On test monitor this is bang on according to clock adjustment
+    jmp y-- pixel_loop
+    set pins 0
+    jmp pixel_reset
+    
+   .wrap
+
+
