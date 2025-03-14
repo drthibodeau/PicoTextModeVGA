@@ -56,6 +56,9 @@ unsigned char* cursor16;                // cursor 8x16
 unsigned char* cursor8;                 // cursor 8x8  
 unsigned char* cursor;                  // cursor pointer (either to cursor8 or cursor16)  
 
+uint bufferClearRowStartWord;           // buffer clear function starting word (first word of character row)
+uint bufferClearWordUBound;             // buffer clear function < upper bound 
+
 
 int main() {
 
@@ -201,6 +204,34 @@ void InvertBufferThread(void) {
    ThreadNotDone = false;  
 }
 
+
+void ClearBufferThread(void) {
+
+    uint pixRow = pixOffset;                                                            // starting pix offset for first row (0-15)        
+    uint charCol = 0;                                                                   // starting at beginning of row 
+    uint8_t* frameBytePtr = (uint8_t*) &frameBuffer[bufferClearRowStartWord];           // byte pointer for frame buffer 
+    
+    for(int j=bufferClearRowStartWord; j<bufferClearWordUBound; j++) {                  // stopping at word before bound
+
+        *(frameBytePtr+3) = TEXTCHARS[0][pixRow];                                       // fill buffer with null character with pixel offset 
+        *(frameBytePtr+2) = TEXTCHARS[0][pixRow];
+        *(frameBytePtr+1) = TEXTCHARS[0][pixRow];
+        *(frameBytePtr+0) = TEXTCHARS[0][pixRow];
+
+        frameBytePtr += 4;
+        charCol += 4;
+        if (charCol==COLS) {
+            charCol=0;
+            pixRow++;
+            if (pixRow==CHRHEIGHT) pixRow=0;               
+        }
+    }
+
+    ThreadNotDone = false;    
+} 
+
+
+/*
 void ClearBufferThread(void) {
 
     uint pixRow = pixOffset;                                // starting pix offset for first row (0-15)
@@ -225,12 +256,8 @@ void ClearBufferThread(void) {
 
    ThreadNotDone = false;    
 } 
+*/
 
-
-// FIX !!!!!!
-void ClearBuffDownFromWordThread(void) {
-
-} 
 
 
 // Frame Buffer functions:
@@ -369,6 +396,8 @@ void clearCurLineRange(uint startCol, uint colUBound) {
     restoreCursor();
     lineWrap = tempLineWrap;    
 }
+
+
 
 
 // Interrupt handlers:

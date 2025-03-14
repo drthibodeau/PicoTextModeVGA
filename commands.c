@@ -129,6 +129,8 @@ void cmdHome (void) {
 void cmdClearScreen (void) {
   
     ThreadNotDone = true; 
+    bufferClearRowStartWord = 0;                                    // clear entire buffer
+    bufferClearWordUBound = FRMBUFFSIZE; 
     multicore_launch_core1(ClearBufferThread);   
     
     for(int j=0; j<CHRMEMSIZE; j++) {
@@ -158,10 +160,8 @@ void cmdClearLine(void) {
 
 void cmdClearDown (void) {
   
-    ThreadNotDone = true; 
-    
+    ThreadNotDone = true;    
     cmdClearCursorRight();                                                              // clear remainder of line
-    
     saveCursor();
 
     uint bottomRow = charRowOffset-1;
@@ -172,32 +172,16 @@ void cmdClearDown (void) {
         cmdLineFeed();                                                                  // move to start of next line
         cmdCarriageReturn();
 
-        for(int j=COLS*nextCharRow+nextCharCol; j<CHRMEMSIZE; j++) charMem[j] = 0; 
+        bufferClearRowStartWord = nextCharBufferWord;                                   // clear remaining frame buffer
+        bufferClearWordUBound = FRMBUFFSIZE;                     
+        multicore_launch_core1(ClearBufferThread); 
 
-        uint pixRow = pixOffset;                                                        // starting pix offset for first row (0-15)        
-        uint charCol = 0;                       
-        uint8_t* frameBytePtr = (uint8_t*) &frameBuffer[nextCharBufferWord];            // byte pointer for frame buffer 
-    
-        for(int j=nextCharBufferWord; j<FRMBUFFSIZE; j++) {
-
-            *(frameBytePtr+3) = TEXTCHARS[0][pixRow];                                   // fill buffer with null character with pixel offset 
-            *(frameBytePtr+2) = TEXTCHARS[0][pixRow];
-            *(frameBytePtr+1) = TEXTCHARS[0][pixRow];
-            *(frameBytePtr+0) = TEXTCHARS[0][pixRow];
-
-            frameBytePtr += 4;
-            charCol += 4;
-            if (charCol==COLS) {
-                charCol=0;
-                pixRow++;
-                if (pixRow==CHRHEIGHT) pixRow=0;               
-            }
-        }
+        for(int j=COLS*nextCharRow+nextCharCol; j<CHRMEMSIZE; j++) charMem[j] = 0;     // clear remaining char memory 
     }
 
-   // while(ThreadNotDone);        // wait for thread to finish     
+    while(ThreadNotDone);                                                               // wait for thread to finish     
     restoreCursor();
-   // multicore_reset_core1();     // reset the core for next launch          
+    multicore_reset_core1();                                                            // reset the core for next launch          
 }
 
 

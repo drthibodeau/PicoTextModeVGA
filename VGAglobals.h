@@ -88,6 +88,8 @@ Registers:
                    R2  R1  R0
 Command Register    0   0   0
 Data Register       0   0   1
+
+possible uses:
 Address Low         0   1   0       (address regs used for reading data from flash to use as storage)
 Address High        0   1   1
 Keyboard In         1   0   0       (USB keyboard input reg)
@@ -112,7 +114,7 @@ move cursor:
   
 
 delete:
-    0x0C    clear screen (RE !!!! test) (ascii)
+    0x0C    clear screen (testes) (ascii)
     0x7F    delete (tested) (ascii)
     0x10    clear line from cursor right (tested) (VT100: ^[[0K)
     0x11    clear line from cursor left (tested) (VT100: ^[[1K)
@@ -187,6 +189,9 @@ extern bool cursorEnabled;                  // show the cursor
 extern unsigned char* cursor16;             // cursor 8x16  
 extern unsigned char* cursor8;              // cursor 8x8  
 extern unsigned char* cursor;               // cursor pointer (either to cursor8 or cursor16)  
+
+extern uint bufferClearRowStartWord;        // buffer clear function starting word (first word of character row)
+extern uint bufferClearWordUBound;          // buffer clear function < upper bound 
 
 
 // --------------------------------------- function declarations ------------------------------------
