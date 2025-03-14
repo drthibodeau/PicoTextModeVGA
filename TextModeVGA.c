@@ -552,42 +552,36 @@ void Standard_PIO_Config(PIO pio, uint sm, uint offset, uint pin, uint num_pins,
 }
  
 void charArraysInit () {
-
-    // memory allcoation for 256x8 array
-    CHRS8x8 = (unsigned char**) malloc(256 * sizeof(unsigned char*));
-     for (int i = 0; i < 256; i++) CHRS8x8[i] = (unsigned char*)malloc(8 * sizeof(unsigned char));
+   
+    CHRS8x8 = (unsigned char**) malloc(256 * sizeof(unsigned char*));                                        // memory allcoation for 256x8 array
+    for (int i = 0; i < 256; i++) CHRS8x8[i] = (unsigned char*)malloc(8 * sizeof(unsigned char));
         
-    // copy default 8x8 chars
-    for (int i = 0; i < 256; i++) 
+    for (int i = 0; i < 256; i++)                                                                            // copy default 8x8 chars
         for (int j = 0; j < 8; j++) CHRS8x8[i][j] = TEXTCHARS8[i][j];
 
-    // memory allcoation for 256x16 array
-    CHRS8x16 = (unsigned char**) malloc(256 * sizeof(unsigned char*));
+    CHRS8x16 = (unsigned char**) malloc(256 * sizeof(unsigned char*));                                       // memory allcoation for 256x16 array
     for (int i = 0; i < 256; i++) CHRS8x16[i] = (unsigned char*)malloc(16 * sizeof(unsigned char));
         
-   // copy default 8x16 chars 
-   for (int i = 0; i < 256; i++) 
+    for (int i = 0; i < 256; i++)                                                                            // copy default 8x16 chars 
         for (int j = 0; j < 16; j++) CHRS8x16[i][j] = TEXTCHARS16[i][j];
 
-    // default character set
-    TEXTCHARS = CHRS8x16;
+    TEXTCHARS = CHRS8x16;                                                                                    // default character set
     ROWS = 30;
     CHRHEIGHT = 16;
 
 }
 
 void CURSOR_Init() {
-    // cursor setup 
-    cursor8 = (unsigned char*) malloc(8 * sizeof(unsigned char));
+    
+    cursor8 = (unsigned char*) malloc(8 * sizeof(unsigned char));           // 8x8 cursor setup 
     for (int j = 0; j < 8; j++) cursor8[j] = TEXTCHARS8[95][j];
 
-    cursor16 = (unsigned char*) malloc(16 * sizeof(unsigned char));
+    cursor16 = (unsigned char*) malloc(16 * sizeof(unsigned char));         // 8x16 cursor setup 
     for (int j = 0; j < 16; j++) cursor16[j] = TEXTCHARS16[95][j];
 
-    cursor = cursor16;                          // default char set
+    cursor = cursor16;                                                      // default cursor 
         
-    // set time and alarm for cursor irq
-    timer_hw->alarm[CURSORIRQ] = timer_hw->timerawl + CURSORSPD; 
+    timer_hw->alarm[CURSORIRQ] = timer_hw->timerawl + CURSORSPD;             // set time and alarm for cursor irq
     timer_hw->inte = 1u << CURSORIRQ; 
     irq_set_exclusive_handler(CURSORIRQ, CURSOR_blink_handler);
     irq_set_enabled(CURSORIRQ, true);
