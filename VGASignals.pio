@@ -1,11 +1,3 @@
-;
-; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
-;
-; SPDX-License-Identifier: BSD-3-Clause
-;
-; SET pin 0 should be mapped to your LED GPIO
-
-
 ; IRQ 5 controls vsync line count
 ; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
 .program SYNC
