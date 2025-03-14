@@ -1,8 +1,7 @@
 #include "VGAglobals.h"
 
 
-// diaplay controller command functions
-
+// display controller command functions
 
 void cmdLineFeed(void) {
 
@@ -11,9 +10,9 @@ void cmdLineFeed(void) {
     else bottomRow = ROWS-1;
      
     if (nextCharRow==bottomRow) { 
-        // clear new bottom line
+       
         uint memClearStart = COLS*charRowOffset;
-        for(int i=0; i<COLS; i++) charMem[memClearStart+i]=0;
+        for(int i=0; i<COLS; i++) charMem[memClearStart+i]=0;                       // clear new bottom line
      
         charRowOffset++;
         if(charRowOffset==ROWS) charRowOffset=0;    
@@ -21,7 +20,7 @@ void cmdLineFeed(void) {
         FrameBuffer_WriteAll();
     } 
     else {
-        nextCharBufferWord+=20*CHRHEIGHT;                                       // 20 bytes per pixel row
+        nextCharBufferWord+=20*CHRHEIGHT;                                           // 20 bytes per pixel row
         if (nextCharBufferWord>=FRMBUFFSIZE) nextCharBufferWord-=FRMBUFFSIZE;
     }
 
@@ -44,7 +43,7 @@ void cmdBackspace (void) {
         if (nextCharCol>COLS) {
             nextCharCol=COLS-1;
             nextCharRow--;
-            nextCharBufferWord = nextCharBufferWord - 20*(CHRHEIGHT-1);  // jump to top of previous line
+            nextCharBufferWord = nextCharBufferWord - 20*(CHRHEIGHT-1);                                         // jump to top of previous line
             if (nextCharBufferWord>FRMBUFFSIZE) nextCharBufferWord = FRMBUFFSIZE - 1 - 20*(CHRHEIGHT-1);  
         }
         if (nextCharRow>ROWS) nextCharRow=ROWS-1;
@@ -59,9 +58,8 @@ void cmdCarriageReturn (void) {
     nextCharWordOffset = 3;
 }
 
-void cmdTab (void) {      
-     // fixed at tab stop start of each word. Go to next word if and not at last word for row 
-         if(nextCharCol<(COLS-4)) {
+void cmdTab (void) {           
+    if(nextCharCol<(COLS-4)) {                      // fixed tab stop at start of each word. Go to next word if not at last word of row 
         nextCharBufferWord++;  
         nextCharCol = (nextCharCol/4)*4 + 4;
         nextCharWordOffset=3;
@@ -117,8 +115,8 @@ void cmdInvertCharPix(void) {
     for(int i=0; i<256; i++) 
         for(int j=0; j<CHRHEIGHT; j++) TEXTCHARS[i][j] = ~TEXTCHARS[i][j];        
     
-    while(ThreadNotDone);        // wait for thread to finish 
-    multicore_reset_core1();     // reset the core for next launch
+    while(ThreadNotDone);                                                           // wait for thread to finish 
+    multicore_reset_core1();                                                        // reset the core for next launch
 }
 
 void cmdHome (void) {   
@@ -137,8 +135,8 @@ void cmdClearScreen (void) {
         charMem[j] = 0;        
     }
 
-    while(ThreadNotDone);        // wait for thread to finish 
-    multicore_reset_core1();     // reset the core for next launch
+    while(ThreadNotDone);                                           // wait for thread to finish 
+    multicore_reset_core1();                                        // reset the core for next launch
                          
 }
 
@@ -162,27 +160,27 @@ void cmdClearDown (void) {
   
     ThreadNotDone = true; 
     
-    cmdClearCursorRight();      // clear remainder of line
+    cmdClearCursorRight();                                                              // clear remainder of line
     
     saveCursor();
 
     uint bottomRow = charRowOffset-1;
-    if(bottomRow>ROWS) bottomRow = ROWS-1;           // above calc only works for offset > 0. Underflows when offset = 0; 
+    if(bottomRow>ROWS) bottomRow = ROWS-1;                                              // above calc only works for offset > 0. Underflows when offset = 0; 
 
-    if(nextCharRow!=bottomRow) {                     // if not at bottom start clearing remaining lines
+    if(nextCharRow!=bottomRow) {                                                        // if not at bottom start clearing remaining lines
         
-        cmdLineFeed();                               // move to start of next line
+        cmdLineFeed();                                                                  // move to start of next line
         cmdCarriageReturn();
 
         for(int j=COLS*nextCharRow+nextCharCol; j<CHRMEMSIZE; j++) charMem[j] = 0; 
 
-        uint pixRow = pixOffset;    // starting pix offset for first row (0-15)        
+        uint pixRow = pixOffset;                                                        // starting pix offset for first row (0-15)        
         uint charCol = 0;                       
-        uint8_t* frameBytePtr = (uint8_t*) &frameBuffer[nextCharBufferWord];  // create a byte pointer for frame buffer. Casting as uint8_t allows byte level manipulation;
+        uint8_t* frameBytePtr = (uint8_t*) &frameBuffer[nextCharBufferWord];            // byte pointer for frame buffer 
     
         for(int j=nextCharBufferWord; j<FRMBUFFSIZE; j++) {
 
-            *(frameBytePtr+3) = TEXTCHARS[0][pixRow];       // fill buffer with null character with pixel offset 
+            *(frameBytePtr+3) = TEXTCHARS[0][pixRow];                                   // fill buffer with null character with pixel offset 
             *(frameBytePtr+2) = TEXTCHARS[0][pixRow];
             *(frameBytePtr+1) = TEXTCHARS[0][pixRow];
             *(frameBytePtr+0) = TEXTCHARS[0][pixRow];
