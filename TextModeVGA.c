@@ -1,8 +1,8 @@
 #include "VGAglobals.h"
 
-// 2D array of 8x16 fonts: 1st dimension corresponds to ascii/cp437 code, 2nd dimension is the font's row  
-// character 0 is the null character (same as ascii) and is used for screen background 
-#include "textchars.c"
+
+#include "textchars.c"                  // 2D arrays of fonts (8x8 and 8x16). 1st dimension corresponds to ascii/cp437 code, 2nd dimension is pixel row
+                                        // character 0 is the null character (same as ascii). Used for screen background 
 
 unsigned char** TEXTCHARS;              // pointer that can switch between 8x16 and 8x8 char arrays
 unsigned char** CHRS8x16;               // pointer for dynamic memory allocation for 8x16 fonts (can be used for custom fonts)
