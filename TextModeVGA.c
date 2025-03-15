@@ -182,8 +182,6 @@ int main() {
 
 
 
-
-
 // threads:
 
 void InvertBufferThread(void) {
@@ -399,26 +397,6 @@ void DATA_IRQ_handler(void) {
 
 }
 
-void VSYNC_IRQ_handler() {
-    
-    // interrupt triggered one time in PIOASM    
-   
-    irq_set_enabled(PIO0_IRQ_0, false);                                                 // disable interrupt 
-    pio_interrupt_clear(pioSYNC,0);                                                     // clear PIO interrupt 
-        
-    while (!pio_sm_is_tx_fifo_full(pioSYNC, smVSYNC)) {                                 // TX buffer filled until no space in buffer
-        
-        if (VSYNC_code_cnt==0) pioSYNC->txf[smVSYNC] = V_ACTIVE_LINES-1;
-        else if (VSYNC_code_cnt==1) pioSYNC->txf[smVSYNC] = V_FRONTP_LINES-1;
-        else pioSYNC->txf[smVSYNC] = V_BACKP_LINES-1;
-        
-        VSYNC_code_cnt++; 
-        if (VSYNC_code_cnt==3) VSYNC_code_cnt=0;
-    }
-
-     irq_set_enabled(PIO0_IRQ_0, true);                                                 // enable interrupt
-}
-
 
 // Config functions: 
 
@@ -479,20 +457,10 @@ void VSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
     float div = 4;
     sm_config_set_clkdiv(&config, div);
 
-    // enabling system PIOx_IRQ_0 source to be PIO's interrupt
-    // pis_interrupt0 is PIOs interrupt 0
-    // x will be based on pio's number (0 in this case)
-    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
-    irq_set_exclusive_handler(PIO0_IRQ_0, VSYNC_IRQ_handler);                                                   // adding handler for PIO0_IRQ_0
-    irq_set_enabled(PIO0_IRQ_0, true);                                                                          // enable PIO0_IRQ_0
-   
     pio_sm_init(pio, sm, offset+SYNC_offset_vsync_start, &config);                                              // init state machine with a specific program (offset) and config.
 
     pio->sm[sm].shiftctrl = (1u << PIO_SM0_SHIFTCTRL_AUTOPULL_LSB);                                             // auto pull with 32 bit threshold
-
-    pio->txf[sm] = V_ACTIVE_LINES-1;                                                                            // line counts for vertical regions -1 for the 0th iteration in PIOASM
-    pio->txf[sm] = V_FRONTP_LINES-1;  
-    pio->txf[sm] = V_BACKP_LINES-1;
+    pio->txf[sm] = V_ACTIVE_LINES-1;                                                                            // line count for active region -1 for the 0th iteration in PIOASM
 
 }
 

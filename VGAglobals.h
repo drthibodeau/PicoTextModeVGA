@@ -48,10 +48,11 @@ active region
 #define PIXEL_PIN  12           // pico pin 16
 
 #define V_ACTIVE_LINES 480 
-#define V_FRONTP_LINES 10 
-#define V_SYNCP_LINES 2         // not using this one 
-#define V_BACKP_LINES 33 
 #define HORZ_PIXELS 640 
+
+#define V_FRONTP_LINES 10       // not using these line values in code    
+#define V_SYNCP_LINES 2         
+#define V_BACKP_LINES 33 
 
 #define FRMBUFFSIZE 9600        // number of 32 bit words 
 #define CHRMEMSIZE 4800 

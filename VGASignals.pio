@@ -1,7 +1,7 @@
 ; IRQ 5 controls vsync line count
 ; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
 .program SYNC
- 
+
 .wrap_target
 ; ---------------------------- HSYNC -------------------------------------  
 
@@ -33,42 +33,41 @@ h_pulse_loop:
 
 
 ; ------------------------------- VSYNC --------------------------------------
-; timing notes: 
-;   set pins = 3 has to come on the second instruction after irq wait 5. This sets the gpio 14 high 
-PUBLIC vsync_start:                        ; PUBLIC will make the label visible under program struct in C     
-     
-    set pins 3   
+; timing notes: set pins = 3 has to come on the second instruction after irq wait 5. This sets gpio 14 high 
+
+PUBLIC vsync_start:                         ; PUBLIC will make the label visible under program struct in C     
+
+    out x, 32                               ; store active area line count (-1  for 0th iteration) 
+ 
  vsync_loop:    
-    set pins 1                             ; toggling on start-up to get the loop back toggle right. Otherwise first line will get missed on start up  
-    out x, 32                              ; using auto pull, which seems to do a first pull on startup
-   
-v_active_loop: 
-    irq wait 5                             ; set and wait on hsync to clear irq towards end of line    
-    jmp !x v_end_active                    ; last hsync delay
-    set pins 3                             ; last hsync instruction. Start pixel output routine on next pixel cycle.  Need pixel start delay to accommodate jump to hsync loop   
-    set pins 1                             ; toggle pixel enable.  
-    jmp x-- v_active_loop                   
-    
-v_end_active:                                
-    out x, 32
-    irq set 0                              ; set irq 0 to refill vsync loop counters 
-v_frontp_loop:                             ; FRONT PORCH 10 lines
-    irq wait 5                             ; set and wait on hsync to clear irq towards end of line        
-    jmp x-- v_frontp_loop                   
+    mov y, x                                ; (re)load counter
+
+v_active_loop:     
+    set pins 3                              ; on loop back this is last hsync instruction. Start pixel output on next pixel sm cycle.   
+    set pins 1                              ; toggle pixel enable   
+    irq wait 5                              ; set and wait on hsync to clear irq towards end of line   
+    jmp y-- v_active_loop           
+
+    set y, 9                               
+v_frontp_loop:                              ; FRONT PORCH 10 lines
+    irq wait 5                              ; set and wait on hsync to clear irq towards end of line        
+    jmp y-- v_frontp_loop                   
 
 ; VSYNC PULSE
-  ;  nop                                   ; I need a byte. the third cycle after irq wait is first cycle of new line. should burn one cycle here but it seems to work  
+    nop                                     ; the third cycle after irq wait is first cycle of new line. should burn one cycle  
     set pins 0
-    irq wait 5                             ; VSYNC pulse 2 lines
-    irq wait 5 [1]                          
-    out x, 32                                
-    set pins 1                             ; set pin on first cycle of new line (third cycle after wait) 
+    irq wait 5                              ; VSYNC pulse 2 lines
+    irq wait 5 [1]                     
+    
+    set y, 31                               ; BACK PORCH 33 lines,                                  
+    set pins 1                              ; set pin on first cycle of new line (third cycle after wait) 
    
-v_backp_loop:                              ; back porch 33 lines
-    irq wait 5                             ; set and wait on hsync to clear irq towards end of line        
-    jmp x-- v_backp_loop   
+    irq wait 5                              ; first line of back porch
+v_backp_loop:                               ; remaining 32 lines of back porch
+    irq wait 5                              ; set and wait on hsync to clear irq towards end of line        
+    jmp y-- v_backp_loop   
 
-    set pins 3                             ; last hsync instruction. Start pixel output routine on next pixel cycle.  Need pixel start delay to accommodate jump to hsync loop 
+    set pins 3                              ; last hsync instruction. Start pixel output routine on next pixel cycle.  Need pixel start delay to accommodate jump to hsync loop 
     jmp vsync_loop 
    
    .wrap
