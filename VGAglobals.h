@@ -106,14 +106,34 @@ output control:
     0x03    invert character set pixels (tested)    
     0x04    set auto-warp. Default is on when controller starts. Read to switch to no auto-wrap at end of line, write any byte to set on (VT100: ^[[?7h)
     
+    0x??    save cursor position, relative to home position, not impacted by change in row offset (VT100: ^[7)
+    0x??    restore cursor position, relative to home position, not impacted by change in row offset (VT100: ^[8)
+    
+    0x??    set scroll region, only rows between top and bottom margins scroll. 
+        
+
 move cursor:
-    0x08    backspace (tested) (ascii)
-    0x09    horizontal tab right (tested) (ascii)    
+
+    0x09    horizontal tab right (tested) (ascii)
+    0x0?    horizontal tab left (to do!!!)         
     0x05    move cursor to top left (home) (tested)  (VT100: ^[[H)  
     0x0A    linefeed (tested) (ascii)  
     0x0D    carriage return (tested) (ascii)
   
+    0x??    move cursor up one line, bounded at row 0 (VT100:
+    0x??    move cursor down one line, bounded at max rows (VT100:
+    0x??    move cursor left one column, bounded at col 0 (VT100:
+    0x??    move cursor right one column, bounded at max col (VT100:
+
+    0x??    move cursor up n lines, bounded at row 0 (VT100: ^[[<n>A)
+    0x??    move cursor down n lines, bounded at max rows (VT100: ^[[<n>B)
+    0x??    move cursor left n columns, bounded at col 0 (VT100: ^[[<n>D)
+    0x??    move cursor right n columns, bounded at max cols (VT100: ^[[<n>C)
+
+    0x??    move cursor to screen location col=x row=y (top left corner is 0,0) (VT100: ^[[<v>;<h>H)
+
 delete:
+    0x08    backspace (tested) (ascii)
     0x0C    clear screen (tested) (ascii)
     0x7F    delete (tested) (ascii)
     0x10    clear line from cursor right (tested) (VT100: ^[[0K)
@@ -124,30 +144,11 @@ delete:
 
 scroll/rotate:
     0x30    rotate down one pixel (tested, there is some shimmering on screen)
-
-
-tab left vs tab right
-Scrolling Region - area of the screen between the top and bottom margins. The margins determine which screen lines move during scrolling
-
-cursorup(n) CUU       Move cursor up n lines                 ^[[<n>A
-cursordn(n) CUD       Move cursor down n lines               ^[[<n>B
-cursorrt(n) CUF       Move cursor right n lines              ^[[<n>C
-cursorlf(n) CUB       Move cursor left n lines               ^[[<n>D
-
-cursorpos(v,h) CUP    Move cursor to screen location v,h     ^[[<v>;<h>H
-
-hvpos(v,h) CUP        Move cursor to screen location v,h     ^[[<v>;<h>f
-index IND             Move/scroll window up one line         ^[D
-revindex RI           Move/scroll window down one line       ^[M
-nextline NEL          Move to next line                      ^[E
-savecursor DECSC      Save cursor position and attributes    ^[7
-restorecursor DECSC   Restore cursor position and attributes ^[8
-
-getcursor DSR         Get cursor position                    ^[6n
-cursorpos CPR            Response: cursor is at v,h          ^[<v>;<h>R
+    0x3?    rotate up one pixel 
+    0x3?    scroll window up one line    (VT100: ^[D)
+    0x3?    scroll window down one line    (VT100: ^[M)
 
 */
-
 
 
 // ------------------------------- Global variable declarations for all files --------------------------------
