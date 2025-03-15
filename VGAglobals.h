@@ -110,38 +110,31 @@ move cursor:
     0x08    backspace (tested) (ascii)
     0x09    horizontal tab right (tested) (ascii)    
     0x05    move cursor to top left (home) (tested)  (VT100: ^[[H)  
-    0x0A    linefeed   (tested) (ascii)  
+    0x0A    linefeed (tested) (ascii)  
     0x0D    carriage return (tested) (ascii)
   
-
 delete:
-    0x0C    clear screen (testes) (ascii)
+    0x0C    clear screen (tested) (ascii)
     0x7F    delete (tested) (ascii)
     0x10    clear line from cursor right (tested) (VT100: ^[[0K)
     0x11    clear line from cursor left (tested) (VT100: ^[[1K)
     0x12    clear entire line (tested)  (VT100: ^[[2K)
-    0x20    Clear screen from cursor down (VT100: ^[[0J) 
-    
-        
-// line clearing
-   
-    0x3B    clearbos ED1          Clear screen from cursor up            ^[[1J
-   
-START escape sequence (write to start, read to stop ???)
+    0x20    clear screen from cursor down (tested) (VT100: ^[[0J) 
+    0x21    clear screen from cursor up (tested) (VT100: ^[[1J)
+
+scroll/rotate:
+    0x30    rotate down one pixel (tested, there is some shimmering on screen)
+
+
 tab left vs tab right
+Scrolling Region - area of the screen between the top and bottom margins. The margins determine which screen lines move during scrolling
 
-
- 
-    Set smooth scrolling                   ^[[?4h
-    Set jump scrolling                     ^[[?4l
-    cursorup(n) CUU       Move cursor up n lines                 ^[[<n>A
+cursorup(n) CUU       Move cursor up n lines                 ^[[<n>A
 cursordn(n) CUD       Move cursor down n lines               ^[[<n>B
 cursorrt(n) CUF       Move cursor right n lines              ^[[<n>C
 cursorlf(n) CUB       Move cursor left n lines               ^[[<n>D
 
 cursorpos(v,h) CUP    Move cursor to screen location v,h     ^[[<v>;<h>H
-
-
 
 hvpos(v,h) CUP        Move cursor to screen location v,h     ^[[<v>;<h>f
 index IND             Move/scroll window up one line         ^[D
@@ -212,7 +205,6 @@ void PIXEL_DMA_Init(PIO pio, uint sm);
 void CURSOR_Init(void);
 
 // interrupt handlers
-void VSYNC_IRQ_handler(void);
 void DATA_IRQ_handler(void);
 void PIXEL_DMA_handler(void);
 void CURSOR_blink_handler(void);
@@ -253,6 +245,7 @@ void cmdClearScreen(void);
 
 // smooth scroll commands
 void cmdRotateDown(void);
+void cmdClearUp (void); 
 
 void dummy(void);
 

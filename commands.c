@@ -178,13 +178,35 @@ void cmdClearDown (void) {
 
         for(int j=COLS*nextCharRow+nextCharCol; j<CHRMEMSIZE; j++) charMem[j] = 0;     // clear remaining char memory 
     }
-
+    else ThreadNotDone=false;
+    
     while(ThreadNotDone);                                                               // wait for thread to finish     
     restoreCursor();
     multicore_reset_core1();                                                            // reset the core for next launch          
 }
 
+void cmdClearUp (void) {
+  
+    ThreadNotDone = true;    
+    cmdClearCursorLeft();                                                              // clear current line to cursor
+    saveCursor();
 
+    if(nextCharRow!=charRowOffset) {                                                    // not at top row then start clearing remaining lines
+        
+        cmdCarriageReturn();                                                            // move to start of row to get upper bound
+
+        bufferClearRowStartWord = 0;                                                    // clear top to current frame buffer word
+        bufferClearWordUBound = nextCharBufferWord;                     
+        multicore_launch_core1(ClearBufferThread); 
+
+        for(int j=COLS*charRowOffset; j<COLS*nextCharRow; j++) charMem[j] = 0;          // clear char rows above  
+    }
+    else ThreadNotDone=false;
+    
+    while(ThreadNotDone);                                                               // wait for thread to finish     
+    restoreCursor();
+    multicore_reset_core1();                                                            // reset the core for next launch          
+}
 
 void cmdRotateDown(void) {
     

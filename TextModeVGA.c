@@ -20,7 +20,7 @@ uint dmaPIXL;                           // dma channel for writing pixel data
 
 uint VSYNC_code_cnt = 0;                // for updating VSYNC PIOASM loop counters 
 
-uint nextCharCol = 0;                   // next free char location (cursor position)
+uint nextCharCol = 10;                   // next free char location (cursor position)
 uint nextCharRow = 0;
 
 uint charRowOffset = 0;                 // row offset for line scrolling
@@ -92,8 +92,8 @@ int main() {
     cmdList[0x7F] = &cmdDelete;
 
     cmdList[0x30] = &cmdRotateDown;
+    cmdList[0x31] = &cmdClearUp;
     
-
     set_nextCharBufferWord();                       // set the pointer to frame buffer word for next character and offset for byte level data writing 
 
 
