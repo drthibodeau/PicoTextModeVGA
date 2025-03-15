@@ -185,3 +185,20 @@ void cmdClearDown (void) {
 }
 
 
+
+void cmdRotateDown(void) {
+    
+    pixOffset++;
+    nextCharBufferWord -=20;
+    
+    if(pixOffset==CHRHEIGHT) {
+        charRowOffset++;
+        pixOffset = 0;
+    }    
+    
+    if(charRowOffset==ROWS) charRowOffset=0; 
+    if(nextCharBufferWord>FRMBUFFSIZE) nextCharBufferWord = FRMBUFFSIZE - 20 + 4*nextCharCol/4;         // wrap around to bottom 
+    
+    FrameBuffer_WriteAll();
+    
+};

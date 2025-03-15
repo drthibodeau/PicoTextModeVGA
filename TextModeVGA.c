@@ -1,6 +1,5 @@
 #include "VGAglobals.h"
 
-
 #include "textchars.c"                  // 2D arrays of fonts (8x8 and 8x16). 1st dimension corresponds to ascii/cp437 code, 2nd dimension is pixel row
                                         // character 0 is the null character (same as ascii). Used for screen background 
 
@@ -78,19 +77,22 @@ int main() {
     cmdList[0x02] = &cmdUse8x16Charset;  
     cmdList[0x03] = &cmdInvertCharPix;   
     cmdList[0x04] = &cmdAutoWrap;   
+    
     cmdList[0x05] = &cmdHome;   
     cmdList[0x08] = &cmdBackspace;
-    cmdList[0x0A] = &cmdLineFeed;   
-      
+    cmdList[0x09] = &cmdTab;  
+    cmdList[0x0A] = &cmdLineFeed;      
     cmdList[0x0D] = &cmdCarriageReturn;       
-    cmdList[0x09] = &cmdTab;    
-
-    cmdList[0x7F] = &cmdDelete;
+   
     cmdList[0x0C] = &cmdClearScreen;  
     cmdList[0x10] = &cmdClearCursorRight;
     cmdList[0x11] = &cmdClearCursorLeft;
     cmdList[0x12] = &cmdClearLine;
     cmdList[0x20] = &cmdClearDown;
+    cmdList[0x7F] = &cmdDelete;
+
+    cmdList[0x30] = &cmdRotateDown;
+    
 
     set_nextCharBufferWord();                       // set the pointer to frame buffer word for next character and offset for byte level data writing 
 
@@ -147,14 +149,12 @@ int main() {
     
     pio_enable_sm_mask_in_sync(pioSYNC, (1<<smVSYNC) | (1<<smHSYNC) );  // enabling sync signals
       
-
-    // TEST !!!!!
+    // FOR TESTING
     stdio_init_all();                                                   // Initialize standard input/output (for USB serial) 
-
 
     while(true) {
     
-        if((InBuffer.write-InBuffer.read)>0) {                                                  // input buffer not empty
+        if(InBuffer.write!=InBuffer.read) {                                                  // input buffer not empty
             
             InBuffer.read++;
             regSelect = InBuffer.buffer[InBuffer.read];
@@ -174,36 +174,22 @@ int main() {
                 CURSOR_blink_handler();                                                         // restart cursor 
             }
 
-            // TEST !!!!!!!
-            printf("data: %d  register: %d \n",latchedData, regSelect);            
-
-        }        
+            // FOR TESTINGS
+            // printf("data: %d  register: %d   read: %d   write: %d \n",latchedData, regSelect, InBuffer.read, InBuffer.write);            
+        }    
     }
 }
 
 
 
 
-// TEST !!! FIX roate down one pixel command
-void RotateDown(void) {
-    
-    pixOffset++;
-    
-    if(pixOffset==CHRHEIGHT) {
-        charRowOffset++;
-        pixOffset = 0;
-    }    
-    if(charRowOffset==ROWS) charRowOffset=0;    
-};
-
-
 
 // threads:
+
 void InvertBufferThread(void) {
     for(int j=0; j<FRMBUFFSIZE; j++) frameBuffer[j] = ~frameBuffer[j];
    ThreadNotDone = false;  
 }
-
 
 void ClearBufferThread(void) {
 
@@ -229,35 +215,6 @@ void ClearBufferThread(void) {
 
     ThreadNotDone = false;    
 } 
-
-
-/*
-void ClearBufferThread(void) {
-
-    uint pixRow = pixOffset;                                // starting pix offset for first row (0-15)
-    uint charCol = 0;                       
-    uint8_t* frameBytePtr = (uint8_t*) &frameBuffer[0];     // create a byte pointer for frame buffer. Casting as uint8_t allows byte level manipulation;
-    
-    for(int j=0; j<FRMBUFFSIZE; j++) {
-
-        *(frameBytePtr+3) = TEXTCHARS[0][pixRow];           // fill buffer with null character with pixel offset 
-        *(frameBytePtr+2) = TEXTCHARS[0][pixRow];
-        *(frameBytePtr+1) = TEXTCHARS[0][pixRow];
-        *(frameBytePtr+0) = TEXTCHARS[0][pixRow];
-
-        frameBytePtr += 4;
-        charCol += 4;
-        if (charCol==COLS) {
-            charCol=0;
-            pixRow++;
-            if (pixRow==CHRHEIGHT) pixRow=0;               
-        }
-    }
-
-   ThreadNotDone = false;    
-} 
-*/
-
 
 
 // Frame Buffer functions:
@@ -396,8 +353,6 @@ void clearCurLineRange(uint startCol, uint colUBound) {
     restoreCursor();
     lineWrap = tempLineWrap;    
 }
-
-
 
 
 // Interrupt handlers:
@@ -585,7 +540,6 @@ void CURSOR_Init() {
     irq_set_exclusive_handler(CURSORIRQ, CURSOR_blink_handler);
     irq_set_enabled(CURSORIRQ, true);
 }
-
 
 // dummy function to prevent crashes from invalid commands
 void dummy(void) {};

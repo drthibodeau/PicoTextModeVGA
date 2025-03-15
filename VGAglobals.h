@@ -250,12 +250,11 @@ void cmdClearDown(void);
 void cmdDelete(void);
 void cmdClearScreen(void);
 
-// need to fix
-void RotateDown(void);
+// smooth scroll commands
+void cmdRotateDown(void);
+
 void dummy(void);
 
-// test
-void ClearBuffDownFromWordThread(void);
 
 
 #endif // VGAGLOBALS_H
