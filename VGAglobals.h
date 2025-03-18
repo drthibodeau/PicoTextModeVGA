@@ -58,8 +58,8 @@ active region
 #define CHRMEMSIZE 4800 
 #define COLS 80
 
-#define CLK 16                  // falling edge trigger. Display controller processes input on the CPU's falling clock. Data are avialible for the CPUs rising edge
-#define CS_ENABLE 17            // active low chip select
+#define CLK 16                  // rising edge trigger. Enabled by CS interrupt handler
+#define CS_ENABLE 17            // falling edge trigger. Sets read/write mode and clokk interrupt
 #define RW_ENABLE 18            // active low write enable
 
 #define D0 0                    // data pins 
@@ -71,16 +71,15 @@ active region
 #define D6 6              
 #define D7 7
 
-#define R0 8                    // register select lines 
+#define R0 8                  // register select lines 
 #define R1 9
 #define R2 10 
  
-#define CMDREG_W 0x00           // registers
-#define CMDREG_R 0x10
-#define CHRREG_W 0x01
+#define CMDREG 0x00           // registers
+#define CHRREG 0x01
 
 #define CURSORIRQ 0
-#define CURSORSPD 500000        // blink speed in microseconds 
+#define CURSORSPD 500000      // blink speed in microseconds 
 
 
 /* 
@@ -88,24 +87,23 @@ active region
 Registers:
                    R2  R1  R0
 Command Register    0   0   0
-Data Register       0   0   1
-
-possible uses:
-Address Low         0   1   0       (address regs used for reading data from flash to use as storage)
-Address High        0   1   1
-Keyboard In         1   0   0       (USB keyboard input reg)
+Character Register  0   0   1
 
 
 Commands
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 output control:
-    0x00    auto increment on character print. Default is on when controller starts. Read to turn off, write any byte to turn on    
-    0x01    view cursor. Default is on when controller starts. Read to turn off, write any byte to turn on
-    0x02    set 8x16 charset. Default is on when controller starts. Read to switch to 8x8 chars, write any byte to set to 8x16 chars    
-    0x03    invert character set pixels (tested)    
-    0x04    set auto-warp. Default is on when controller starts. Read to switch to no auto-wrap at end of line, write any byte to set on (VT100: ^[[?7h)
+     
+    0x00    auto increment on character print. Default is on when controller starts. Write any byte to turn on    
+    0x01    view cursor. Default is on when controller starts. Write any byte to turn on
+    0x02    set 8x16 charset. Default is on when controller starts. Write any byte to set to 8x16 chars    
+    0x03    invert character set pixels (tested)        
+    0x04    set auto-warp. Default is on when controller starts. Write any byte to set on (VT100: ^[[?7h)
     
+    NEED output control commands to turn off !!!
+
+
     0x??    save cursor position, relative to home position, not impacted by change in row offset (VT100: ^[7)
     0x??    restore cursor position, relative to home position, not impacted by change in row offset (VT100: ^[8)
     
@@ -206,7 +204,7 @@ void PIXEL_DMA_Init(PIO pio, uint sm);
 void CURSOR_Init(void);
 
 // interrupt handlers
-void DATA_IRQ_handler(void);
+void INDATA_IRQ_handler(void);
 void PIXEL_DMA_handler(void);
 void CURSOR_blink_handler(void);
 

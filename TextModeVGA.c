@@ -20,7 +20,7 @@ uint dmaPIXL;                           // dma channel for writing pixel data
 
 uint VSYNC_code_cnt = 0;                // for updating VSYNC PIOASM loop counters 
 
-uint nextCharCol = 10;                   // next free char location (cursor position)
+uint nextCharCol = 0;                   // next free char location (cursor position)
 uint nextCharRow = 0;
 
 uint charRowOffset = 0;                 // row offset for line scrolling
@@ -96,9 +96,10 @@ int main() {
     
     set_nextCharBufferWord();                       // set the pointer to frame buffer word for next character and offset for byte level data writing 
 
+    volatile uint8_t latchedData = 0; 
 
     // ------------------------TEST CHARS
-   
+   /*
     int i = 0;
     for(int j=0; j<ROWS*COLS; j++) {
         charMem[j] = i;
@@ -107,7 +108,7 @@ int main() {
     }
     // init test frame buffer
     FrameBuffer_WriteAll();
-
+*/
     // ------------------------- END TEST   
 
     
@@ -116,45 +117,45 @@ int main() {
     gpio_init_mask(pinMask);               
     gpio_set_dir_in_masked(pinMask);  
     
-    gpio_init(CS_ENABLE);                                               // set Chip Select pin as input
+    gpio_init(CS_ENABLE);                                                                           // set Chip Select pin as input with falling edge trigger
     gpio_set_dir(CS_ENABLE,false);
-
-    volatile uint8_t latchedData = 0;                                   // input from data bus (set by interrupt handler)
-
-    gpio_init(CLK);                                                     // set Clock pin as input with falling edge IRQ triggger  
+    gpio_set_irq_enabled(CS_ENABLE,GPIO_IRQ_EDGE_FALL,true);     
+    
+    gpio_init(CLK);                                                                                 // set Clock pin as input with rising edge trigger  
     gpio_set_dir(CLK,false);
-    gpio_set_irq_enabled(CLK,GPIO_IRQ_EDGE_FALL,true);
-    irq_set_exclusive_handler(IO_IRQ_BANK0,DATA_IRQ_handler);
+   // gpio_set_irq_enabled(CLK,GPIO_IRQ_EDGE_RISE,true);                                          // data latching seems to work well using the CS line
+    
+    irq_set_exclusive_handler(IO_IRQ_BANK0,INDATA_IRQ_handler);
     irq_set_enabled(IO_IRQ_BANK0,true);
 
-    gpio_init(RW_ENABLE);                                               // set RW pin as input
+    gpio_init(RW_ENABLE);                                                                           // set RW pin as input
     gpio_set_dir(RW_ENABLE,false);
  
-    PIO pioPIXL = pio1;                                                 // PIXEL PIO setup
+    PIO pioPIXL = pio1;                                                                             // PIXEL PIO setup
     uint offsetPIXL = pio_add_program(pioPIXL,&PIXEL_program);    
     uint smPIXL = pio_claim_unused_sm(pioPIXL,true);
     PIXEL_Pin_Init(pioPIXL, smPIXL, offsetPIXL, PIXEL_PIN);
 
-    uint offsetSYNC = pio_add_program(pioSYNC,&SYNC_program);           // SYNC PIO setup
+    uint offsetSYNC = pio_add_program(pioSYNC,&SYNC_program);                                       // SYNC PIO setup
     
     smVSYNC = pio_claim_unused_sm(pioSYNC,true);
-    VSYNC_Pin_Init(pioSYNC, smVSYNC, offsetSYNC, VSYNC_PIN);            // VSYNC
+    VSYNC_Pin_Init(pioSYNC, smVSYNC, offsetSYNC, VSYNC_PIN);                                        // VSYNC
     
     uint smHSYNC = pio_claim_unused_sm(pioSYNC,true);
-    HSYNC_Pin_Init(pioSYNC, smHSYNC, offsetSYNC, HSYNC_PIN);            // HSYNC
+    HSYNC_Pin_Init(pioSYNC, smHSYNC, offsetSYNC, HSYNC_PIN);                                        // HSYNC
            
-    pio_enable_sm_mask_in_sync(pioPIXL, (1<<smPIXL) );                  // enable pixel state machine first and wait for gpio signal from sync program 
+    pio_enable_sm_mask_in_sync(pioPIXL, (1<<smPIXL) );                                              // enable state machine first and wait for signal from sync program 
 
-    PIXEL_DMA_Init(pioPIXL,smPIXL);                                     // initialize DMA to fill PIXEL tx fifo
+    PIXEL_DMA_Init(pioPIXL,smPIXL);                                                                 // initialize DMA to fill PIXEL tx fifo
     
-    pio_enable_sm_mask_in_sync(pioSYNC, (1<<smVSYNC) | (1<<smHSYNC) );  // enabling sync signals
+    pio_enable_sm_mask_in_sync(pioSYNC, (1<<smVSYNC) | (1<<smHSYNC) );                              // enabling sync signals
       
     // FOR TESTING
-    stdio_init_all();                                                   // Initialize standard input/output (for USB serial) 
+    // stdio_init_all();                                                                               // Initialize standard input/output (for USB serial) 
 
     while(true) {
     
-        if(InBuffer.write!=InBuffer.read) {                                                  // input buffer not empty
+        if(InBuffer.write!=InBuffer.read) {                                                         // input buffer not empty
             
             InBuffer.read++;
             regSelect = InBuffer.buffer[InBuffer.read];
@@ -162,16 +163,16 @@ int main() {
             latchedData = InBuffer.buffer[InBuffer.read];  
             
             if (cursorEnabled) {
-                irq_set_enabled(CURSORIRQ, false);                                              // pause cursor blink 
-                charBufferWrite();                                                              // restore char (remove the cursor if visible)
+                irq_set_enabled(CURSORIRQ, false);                                                  // pause cursor blink 
+                charBufferWrite();                                                                  // restore char (remove the cursor if visible)
             }
 
-            if(regSelect==CMDREG_W || regSelect==CMDREG_R) (*cmdList[latchedData])();           // process command  
-            if(regSelect==CHRREG_W)  FrameBuffer_WriteNextChar(latchedData,ChrIncrement);       // or process new character
+            if(regSelect==CMDREG) (*cmdList[latchedData])();                                        // process command  
+            if(regSelect==CHRREG) FrameBuffer_WriteNextChar(latchedData,ChrIncrement);              // or process new character
 
             if (cursorEnabled) {
                 irq_set_enabled(CURSORIRQ, true);
-                CURSOR_blink_handler();                                                         // restart cursor 
+                CURSOR_blink_handler();                                                             // restart cursor 
             }
 
             // FOR TESTINGS
@@ -384,19 +385,17 @@ void PIXEL_DMA_handler(void) {
    dma_channel_set_read_addr(dmaPIXL, frameBuffer, true);       // point to frame buffer start address and enable (true)
 }
 
-void DATA_IRQ_handler(void) {
-
-    gpio_acknowledge_irq(CLK,GPIO_IRQ_EDGE_FALL);
-
-    if (gpio_get(CS_ENABLE)==0) {                                                                                               // write to input buffer register select followed by data       
+void INDATA_IRQ_handler(void) { 
+   
+    if (gpio_get_irq_event_mask(CS_ENABLE) && gpio_get(RW_ENABLE)==0 ) {         
         InBuffer.write++;  
-        InBuffer.buffer[InBuffer.write] = (gpio_get(RW_ENABLE)<<4) | (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register. bit 4 set to RW signal
+        InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register. bit 4 set to RW signal
         InBuffer.write++;  
         InBuffer.buffer[InBuffer.write] = (gpio_get(D7)<<7) | (gpio_get(D6)<<6) | (gpio_get(D5)<<5) | (gpio_get(D4)<<4) | (gpio_get(D3)<<3) | (gpio_get(D2)<<2) | (gpio_get(D1)<<1) | gpio_get(D0);  
     }
+    gpio_acknowledge_irq(CS_ENABLE,GPIO_IRQ_EDGE_FALL);
 
 }
-
 
 // Config functions: 
 
