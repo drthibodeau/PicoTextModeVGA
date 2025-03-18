@@ -7,4 +7,4 @@
 
 Obligatory Hello World! test on the homebrew CPU: 
 
-<img src="PXL_20250318_014208059.jpg" width="1000" alt="Homebrew CPU Test">
+<img src="hello_world.jpg" width="1000" alt="Homebrew CPU Test">
