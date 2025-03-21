@@ -13,8 +13,10 @@ uint CHRHEIGHT;                         // pixel height (8 or 16)
 unsigned char charMem[CHRMEMSIZE];      // allocating enough space for 80 cols x 60 rows = 4800 bytes 
 uint frameBuffer[FRMBUFFSIZE];          // 640x480 pixels as 9600 32-bit values
 
+PIO pioPIXL = pio1;                     // pixel data input PIO
 PIO pioSYNC = pio0;                     // sync signal PIO 
-uint smVSYNC;                           // vsync state machines
+uint smVSYNC;                           // vsync state machine
+uint smData;                            // data input state machine
 
 uint dmaPIXL;                           // dma channel for writing pixel data
 
@@ -119,32 +121,37 @@ int main() {
     
     gpio_init(CS_ENABLE);                                                                           // set Chip Select pin as input with falling edge trigger
     gpio_set_dir(CS_ENABLE,false);
-    gpio_set_irq_enabled(CS_ENABLE,GPIO_IRQ_EDGE_FALL,true);     
+  //  gpio_set_irq_enabled(CS_ENABLE,GPIO_IRQ_EDGE_FALL,true);     
     
     gpio_init(CLK);                                                                                 // set Clock pin as input with rising edge trigger  
     gpio_set_dir(CLK,false);
    // gpio_set_irq_enabled(CLK,GPIO_IRQ_EDGE_RISE,true);                                          // data latching seems to work well using the CS line
     
-    irq_set_exclusive_handler(IO_IRQ_BANK0,INDATA_IRQ_handler);
-    irq_set_enabled(IO_IRQ_BANK0,true);
+   // irq_set_exclusive_handler(IO_IRQ_BANK0,INDATA_IRQ_handler);
+   // irq_set_enabled(IO_IRQ_BANK0,true);
 
     gpio_init(RW_ENABLE);                                                                           // set RW pin as input
     gpio_set_dir(RW_ENABLE,false);
  
-    PIO pioPIXL = pio1;                                                                             // PIXEL PIO setup
-    uint offsetPIXL = pio_add_program(pioPIXL,&PIXEL_program);    
+                                                                               
+    uint offsetPIXL = pio_add_program(pioPIXL,&PIXEL_program);                                      // PIXEL PIO setup
     uint smPIXL = pio_claim_unused_sm(pioPIXL,true);
-    PIXEL_Pin_Init(pioPIXL, smPIXL, offsetPIXL, PIXEL_PIN);
+    PIXEL_Pin_Init(pioPIXL, smPIXL, offsetPIXL);
+
+    // NEW CODE 
+    smData =  pio_claim_unused_sm(pioPIXL,true);
+    Data_In_Init(pioPIXL, smData, offsetPIXL);
+
 
     uint offsetSYNC = pio_add_program(pioSYNC,&SYNC_program);                                       // SYNC PIO setup
     
     smVSYNC = pio_claim_unused_sm(pioSYNC,true);
-    VSYNC_Pin_Init(pioSYNC, smVSYNC, offsetSYNC, VSYNC_PIN);                                        // VSYNC
+    VSYNC_Pin_Init(pioSYNC, smVSYNC, offsetSYNC);                                                   // VSYNC
     
     uint smHSYNC = pio_claim_unused_sm(pioSYNC,true);
-    HSYNC_Pin_Init(pioSYNC, smHSYNC, offsetSYNC, HSYNC_PIN);                                        // HSYNC
+    HSYNC_Pin_Init(pioSYNC, smHSYNC, offsetSYNC);                                                   // HSYNC
            
-    pio_enable_sm_mask_in_sync(pioPIXL, (1<<smPIXL) );                                              // enable state machine first and wait for signal from sync program 
+    pio_enable_sm_mask_in_sync(pioPIXL, (1<<smPIXL) | (1<<smData) );                                // enable state machine first and wait for signal from sync program 
 
     PIXEL_DMA_Init(pioPIXL,smPIXL);                                                                 // initialize DMA to fill PIXEL tx fifo
     
@@ -386,16 +393,55 @@ void PIXEL_DMA_handler(void) {
 }
 
 void INDATA_IRQ_handler(void) { 
-   
+   /*
     if (gpio_get_irq_event_mask(CS_ENABLE) && gpio_get(RW_ENABLE)==0 ) {         
         InBuffer.write++;  
-        InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register. bit 4 set to RW signal
+        InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register 
         InBuffer.write++;  
         InBuffer.buffer[InBuffer.write] = (gpio_get(D7)<<7) | (gpio_get(D6)<<6) | (gpio_get(D5)<<5) | (gpio_get(D4)<<4) | (gpio_get(D3)<<3) | (gpio_get(D2)<<2) | (gpio_get(D1)<<1) | gpio_get(D0);  
     }
+   */
     gpio_acknowledge_irq(CS_ENABLE,GPIO_IRQ_EDGE_FALL);
 
 }
+
+
+void DATA_IRQ_test() {
+    
+  //  irq_set_enabled(PIO1_IRQ_1, false);                                                 // disable interrupt 
+    pio_interrupt_clear(pioPIXL,1);                                                     // clear PIO interrupt 
+    
+    // uint8_t x = pioPIXL->rxf[smData];
+   
+   // if ( gpio_get(CS_ENABLE)==0 && gpio_get(RW_ENABLE)==0 ) {         
+        InBuffer.write++;  
+     //   InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register 
+        InBuffer.buffer[InBuffer.write] = 1;
+        InBuffer.write++;  
+       // InBuffer.buffer[InBuffer.write] = (gpio_get(D7)<<7) | (gpio_get(D6)<<6) | (gpio_get(D5)<<5) | (gpio_get(D4)<<4) | (gpio_get(D3)<<3) | (gpio_get(D2)<<2) | (gpio_get(D1)<<1) | gpio_get(D0);  
+      // InBuffer.buffer[InBuffer.write] = pioPIXL->rxf[smData];
+      InBuffer.buffer[InBuffer.write] = 0x0A;
+ //  }
+
+  //    pio_interrupt_clear(pioPIXL,1);   
+
+    /*      
+    while (!pio_sm_is_tx_fifo_full(pioSYNC, smVSYNC)) {                                 // TX buffer filled until no space in buffer
+        
+        if (VSYNC_code_cnt==0) pioSYNC->txf[smVSYNC] = V_ACTIVE_LINES-1;
+        else if (VSYNC_code_cnt==1) pioSYNC->txf[smVSYNC] = V_FRONTP_LINES-1;
+        else pioSYNC->txf[smVSYNC] = V_BACKP_LINES-1;
+        
+        VSYNC_code_cnt++; 
+        if (VSYNC_code_cnt==3) VSYNC_code_cnt=0;
+    }
+*/
+    // irq_set_enabled(PIO1_IRQ_1, true);                                                 // enable interrupt
+
+}
+
+
+
 
 // Config functions: 
 
@@ -418,12 +464,12 @@ void PIXEL_DMA_Init(PIO pio, uint sm) {
 
 }
 
-void PIXEL_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
+void PIXEL_Pin_Init(PIO pio, uint sm, uint offset) {
            
     // xxx_get_default_config() function is a helper function generated by the PIO assembler.  
     pio_sm_config config = PIXEL_program_get_default_config(offset);                                            // PIO config structure.     
-    Standard_PIO_Config(pio, sm, offset, pin, 1, &config);                                                      // standard PIO config options
-    pio_sm_init(pio, sm, offset, &config);                                                                      // init state machine with a specific program (offset) and config
+    Standard_PIO_Config(pio, sm, offset, PIXEL_PIN, 1, true, &config);                                          // standard PIO config options
+    pio_sm_init(pio, sm, offset+PIXEL_offset_pixelData, &config);                                                                      // init state machine with a specific program (offset) and config
 
     // auto pull with 32 bit threshold (BIT 17) and shift out to the right (bit 19 == 0)
     // join RX to TX to double buffer size *BIT 30)
@@ -434,11 +480,42 @@ void PIXEL_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
                                                                                 
 }
 
-void HSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
+
+void Data_In_Init(PIO pio, uint sm, uint offset) {
+           
+    // xxx_get_default_config() function is a helper function generated by the PIO assembler.  
+    pio_sm_config config = PIXEL_program_get_default_config(offset);                                            // PIO config structure.     
+    Standard_PIO_Config(pio, sm, offset, D0, 9, false, &config);                                                // standard PIO config options
+    
+    // enabling system PIOx_IRQ_0 source to be PIO's interrupt
+    // pis_interrupt0 is PIOs interrupt 0
+    // x will be based on pio's number (0 in this case)
+    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);
+
+    // adding handler for PIO1_IRQ_0
+    irq_set_exclusive_handler(PIO1_IRQ_1, DATA_IRQ_test);
+
+    // enable PIO0_IRQ_0
+    irq_set_enabled(PIO1_IRQ_1, true);
+    
+    pio_sm_init(pio, sm, offset+PIXEL_offset_dataRead, &config);                                               // init state machine with a specific program (offset) and config
+
+    // auto push (bit 16) with 9 bit threshold (bits 20-23)
+    // input shift register to right (data enters from left, bit 18 == 1)
+    // join RX to TX to double buffer size (bit 31)
+    // data will be pushed to FIFO with R/W signal in first word followed by data in second word
+    pio->sm[sm].shiftctrl = (1u << PIO_SM0_SHIFTCTRL_FJOIN_RX_LSB) | (1u << PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_LSB); 
+    // | ( 1u << PIO_SM0_SHIFTCTRL_AUTOPUSH_LSB)  | (9u << PIO_SM0_SHIFTCTRL_PUSH_THRESH_LSB); 
+                                                                              
+}
+
+
+
+void HSYNC_Pin_Init(PIO pio, uint sm, uint offset) {
 
     // xxx_get_default_config() function is a helper function generated by the PIO assembler.  
     pio_sm_config config = SYNC_program_get_default_config(offset);                                             // PIO config structure. 
-    Standard_PIO_Config(pio, sm, offset, pin, 1, &config);                                                      // standard PIO config options
+    Standard_PIO_Config(pio, sm, offset, HSYNC_PIN, 1, true, &config);                                          // standard PIO config options
 
     float div = 4;
     sm_config_set_clkdiv(&config, div);
@@ -447,11 +524,11 @@ void HSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
         
 }
 
-void VSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
+void VSYNC_Pin_Init(PIO pio, uint sm, uint offset) {
            
     // xxx_get_default_config() function is a helper function generated by the PIO assembler.  
     pio_sm_config config = SYNC_program_get_default_config(offset);                                             // PIO config structure. 
-    Standard_PIO_Config(pio, sm, offset, pin, 2, &config);                                                      // standard PIO config options
+    Standard_PIO_Config(pio, sm, offset, VSYNC_PIN, 2, true, &config);                                          // standard PIO config options, second pin is used to block pixel output
 
     float div = 4;
     sm_config_set_clkdiv(&config, div);
@@ -463,10 +540,10 @@ void VSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin) {
 
 }
 
-void Standard_PIO_Config(PIO pio, uint sm, uint offset, uint pin, uint num_pins, pio_sm_config* config_ptr) {
+void Standard_PIO_Config(PIO pio, uint sm, uint offset, uint pin, uint num_pins, bool pin_dir, pio_sm_config* config_ptr) {
 
         for(int i=0; i<num_pins; i++) pio_gpio_init(pio, pin+i);               // connects GPIO "pin" to the PIO
-        pio_sm_set_consecutive_pindirs(pio, sm, pin, num_pins, true);          // set one or more consecutive pin directions
+        pio_sm_set_consecutive_pindirs(pio, sm, pin, num_pins, pin_dir);       // set one or more consecutive pin directions (common for all pins)
         sm_config_set_set_pins(config_ptr, pin, num_pins);                     // modifies state machine config to specify which pin(s) out and set instructions affect.
         sm_config_set_out_pins(config_ptr, pin, num_pins);           
    
