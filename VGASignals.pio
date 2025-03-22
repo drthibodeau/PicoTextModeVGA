@@ -1,10 +1,7 @@
 
 .define pixelwait 18
 .define CS_ENABLE 0             
-
-; !!!! use directives here : !!!!!
-; hardcoded gpio pins:
-; gpio 16 is clock
+.define CLK 15 
 
 ; IRQ 5 controls vsync line count
 ; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
@@ -106,19 +103,17 @@ PUBLIC dataRead:
     wait 1 gpio CS_ENABLE 
 edgeFall:
     wait 0 gpio CS_ENABLE [1]       ; falling edge detection CS, need a one cycle delay
-    in pins, 1                      ; read the CS enable line
+    in pins, 2                      ; read R/W and CS enable (both need to be low) 
     mov x, isr                      ; this will reset ISR
     jmp x-- edgeFall                ; catch false falling edge. guards against noisy signals  
 
-  ;  wait 0 gpio 16         ; wait for falling clock edge   
-   ; set x, 
- ;  in pins, 9             ; read all pins to get the R/W signal (bit 8)
-  ;  wait 1 gpio 16         ; wait for rising clock edge
-  ;  in pins, 9            ; read all pins to get data (bits 0-7)
-   
-    irq set 1             ; system level interrupt on IRQ 1 
+    wait 0 gpio CLK                    
+    wait 1 gpio CLK                 ; rising edge of clock
+ 
+    in pins, 13                     ; read all pins to get reg select (bits 2-4) and data (bits 5-12)
+    push                            ; push to RX fifo 
+    irq set 0                      ; system level interrupt on IRQ 0 
     jmp dataRead 
-
 
    .wrap
 

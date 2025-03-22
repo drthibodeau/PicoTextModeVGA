@@ -392,55 +392,25 @@ void PIXEL_DMA_handler(void) {
    dma_channel_set_read_addr(dmaPIXL, frameBuffer, true);       // point to frame buffer start address and enable (true)
 }
 
-void INDATA_IRQ_handler(void) { 
-   /*
-    if (gpio_get_irq_event_mask(CS_ENABLE) && gpio_get(RW_ENABLE)==0 ) {         
-        InBuffer.write++;  
-        InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register 
-        InBuffer.write++;  
-        InBuffer.buffer[InBuffer.write] = (gpio_get(D7)<<7) | (gpio_get(D6)<<6) | (gpio_get(D5)<<5) | (gpio_get(D4)<<4) | (gpio_get(D3)<<3) | (gpio_get(D2)<<2) | (gpio_get(D1)<<1) | gpio_get(D0);  
-    }
-   */
-    gpio_acknowledge_irq(CS_ENABLE,GPIO_IRQ_EDGE_FALL);
+void INDATA_IRQ_handler() {
 
-}
-
-
-void DATA_IRQ_test() {
+    pio_interrupt_clear(pioPIXL,0);                 // clear PIO interrupt 
     
-  //  irq_set_enabled(PIO1_IRQ_1, false);                                                 // disable interrupt 
-    pio_interrupt_clear(pioPIXL,1);                                                     // clear PIO interrupt 
-    
-    // uint8_t x = pioPIXL->rxf[smData];
+    uint rxData = pioPIXL->rxf[smData];
    
-   // if ( gpio_get(CS_ENABLE)==0 && gpio_get(RW_ENABLE)==0 ) {         
+    if((rxData & 31u)==4) {                                 // mask lower 5 bits and test if bit 3 is high (write to char reg)  
         InBuffer.write++;  
-     //   InBuffer.buffer[InBuffer.write] = (gpio_get(R2)<<2) | (gpio_get(R1)<<1) | gpio_get(R0);      // Register 
-        InBuffer.buffer[InBuffer.write] = 1;
+        InBuffer.buffer[InBuffer.write] = CHRREG;       // write to char register        
         InBuffer.write++;  
-       // InBuffer.buffer[InBuffer.write] = (gpio_get(D7)<<7) | (gpio_get(D6)<<6) | (gpio_get(D5)<<5) | (gpio_get(D4)<<4) | (gpio_get(D3)<<3) | (gpio_get(D2)<<2) | (gpio_get(D1)<<1) | gpio_get(D0);  
-      // InBuffer.buffer[InBuffer.write] = pioPIXL->rxf[smData];
-      InBuffer.buffer[InBuffer.write] = 0x0A;
- //  }
-
-  //    pio_interrupt_clear(pioPIXL,1);   
-
-    /*      
-    while (!pio_sm_is_tx_fifo_full(pioSYNC, smVSYNC)) {                                 // TX buffer filled until no space in buffer
-        
-        if (VSYNC_code_cnt==0) pioSYNC->txf[smVSYNC] = V_ACTIVE_LINES-1;
-        else if (VSYNC_code_cnt==1) pioSYNC->txf[smVSYNC] = V_FRONTP_LINES-1;
-        else pioSYNC->txf[smVSYNC] = V_BACKP_LINES-1;
-        
-        VSYNC_code_cnt++; 
-        if (VSYNC_code_cnt==3) VSYNC_code_cnt=0;
+        InBuffer.buffer[InBuffer.write] = rxData>>5;         // remove the lower 5 bits, upper bits are char data 
+    }  
+    else if ((rxData & 31u)==0) {                            // mask lower 5 bits and test if all zero (write to command reg)  
+        InBuffer.write++;  
+        InBuffer.buffer[InBuffer.write] = CMDREG;       // write to char register        
+        InBuffer.write++;  
+        InBuffer.buffer[InBuffer.write] = rxData>>5;         // remove the lower 5 bits, upper bits are char data 
     }
-*/
-    // irq_set_enabled(PIO1_IRQ_1, true);                                                 // enable interrupt
-
 }
-
-
 
 
 // Config functions: 
@@ -490,25 +460,22 @@ void Data_In_Init(PIO pio, uint sm, uint offset) {
     // enabling system PIOx_IRQ_0 source to be PIO's interrupt
     // pis_interrupt0 is PIOs interrupt 0
     // x will be based on pio's number (0 in this case)
-    pio_set_irq1_source_enabled(pio, pis_interrupt1, true);
+    pio_set_irq0_source_enabled(pio, pis_interrupt0, true);
 
     // adding handler for PIO1_IRQ_0
-    irq_set_exclusive_handler(PIO1_IRQ_1, DATA_IRQ_test);
+    irq_set_exclusive_handler(PIO1_IRQ_0, INDATA_IRQ_handler);
 
-    // enable PIO0_IRQ_0
-    irq_set_enabled(PIO1_IRQ_1, true);
-    
+    // enable PIO1_IRQ_0
+    irq_set_enabled(PIO1_IRQ_0, true);
+
     pio_sm_init(pio, sm, offset+PIXEL_offset_dataRead, &config);                                               // init state machine with a specific program (offset) and config
 
-    // auto push (bit 16) with 9 bit threshold (bits 20-23)
-    // input shift register to right (data enters from left, bit 18 == 1)
+    // input shift register to left (data enters from right, bit 18 == 0)
     // join RX to TX to double buffer size (bit 31)
-    // data will be pushed to FIFO with R/W signal in first word followed by data in second word
-    pio->sm[sm].shiftctrl = (1u << PIO_SM0_SHIFTCTRL_FJOIN_RX_LSB) | (1u << PIO_SM0_SHIFTCTRL_IN_SHIFTDIR_LSB); 
-    // | ( 1u << PIO_SM0_SHIFTCTRL_AUTOPUSH_LSB)  | (9u << PIO_SM0_SHIFTCTRL_PUSH_THRESH_LSB); 
-                                                                              
+    // data will be pushed to FIFO with CS enabled first, R/W signal second, reg select third, followed by 8-bit data 
+    pio->sm[sm].shiftctrl = (1u << PIO_SM0_SHIFTCTRL_FJOIN_RX_LSB);
+                                                                                    
 }
-
 
 
 void HSYNC_Pin_Init(PIO pio, uint sm, uint offset) {

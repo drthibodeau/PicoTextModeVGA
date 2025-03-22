@@ -60,11 +60,10 @@ active region
 
 #define CLK 15                  // rising edge trigger. Enabled by CS interrupt handler
 
-
 #define CS_ENABLE 0             // falling edge trigger in PIO
 #define RW_ENABLE 1             // active low write enable
 
-#define R0 2                  // register select lines 
+#define R0 2                    // register select lines 
 #define R1 3
 #define R2 4 
 
