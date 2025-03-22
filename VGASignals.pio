@@ -1,3 +1,8 @@
+
+.define pixelwait 18
+.define CS_ENABLE 0             
+.define CLK 15 
+
 ; IRQ 5 controls vsync line count
 ; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
 .program SYNC
@@ -33,7 +38,7 @@ h_pulse_loop:
 
 
 ; ------------------------------- VSYNC --------------------------------------
-; timing notes: set pins = 3 has to come on the second instruction after irq wait 5. This sets gpio 14 high 
+; timing notes: set pins = 3 has to come on the second instruction after irq wait 5. This sets gpio "pixelwait" high 
 
 PUBLIC vsync_start:                         ; PUBLIC will make the label visible under program struct in C     
 
@@ -73,17 +78,18 @@ v_backp_loop:                               ; remaining 32 lines of back porch
    .wrap
 
 
-; GPIO 14 controls pixel output, turned on and off by vsync program
+; GPIO "pixelwait" controls pixel output, turned on and off by vsync program
 ; counting pixels (or transition) as if value is sent at end of instruction cycle. i.e. sets are on first instruction of phase
 .program PIXEL
  
 .wrap_target  
 
+PUBLIC pixelData:
     out x,32               ; this is the loop size (using autopull)
   
 pixel_reset:
     mov y,x
-    wait 1 gpio 14 
+    wait 1 gpio pixelwait 
     nop                   ; adds a delay so that first pixel out lines up with hysnc active count. On test monitor this gives the lowest clock phase adjustment 
 pixel_loop:  
     out pins, 1 [3]        ; 5 cycles of output until pixel change (3 delays + jmp + next out pins). On test monitor this is bang on according to clock adjustment
@@ -91,6 +97,24 @@ pixel_loop:
     set pins 0
     jmp pixel_reset
     
+
+PUBLIC dataRead:
+ 
+    wait 1 gpio CS_ENABLE 
+edgeFall:
+    wait 0 gpio CS_ENABLE [1]       ; falling edge detection CS, need a one cycle delay
+    in pins, 2                      ; read R/W and CS enable (both need to be low) 
+    mov x, isr                      ; this will reset ISR
+    jmp x-- edgeFall                ; catch false falling edge. guards against noisy signals  
+
+    wait 0 gpio CLK                    
+    wait 1 gpio CLK                 ; rising edge of clock
+ 
+    in pins, 13                     ; read all pins to get reg select (bits 2-4) and data (bits 5-12)
+    push                            ; push to RX fifo 
+    irq set 0                      ; system level interrupt on IRQ 0 
+    jmp dataRead 
+
    .wrap
 
 

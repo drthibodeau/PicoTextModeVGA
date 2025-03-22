@@ -43,9 +43,9 @@ active region
 
 #define SYSCLK 126000000     
 
-#define HSYNC_PIN 15            // pico pin 20 
-#define VSYNC_PIN 13            // pico pin 19, gpio 14 used for enabling pixel output 
-#define PIXEL_PIN  12           // pico pin 16
+#define HSYNC_PIN 16            // pico pin 21 
+#define VSYNC_PIN 17            // pico pin 22, gpio 18 used for enabling pixel output 
+#define PIXEL_PIN  19           // pico pin 25
 
 #define V_ACTIVE_LINES 480 
 #define HORZ_PIXELS 640 
@@ -58,22 +58,25 @@ active region
 #define CHRMEMSIZE 4800 
 #define COLS 80
 
-#define CLK 16                  // rising edge trigger. Enabled by CS interrupt handler
-#define CS_ENABLE 17            // falling edge trigger. Sets read/write mode and clokk interrupt
-#define RW_ENABLE 18            // active low write enable
+#define CLK 15                  // rising edge trigger. Enabled by CS interrupt handler
 
-#define D0 0                    // data pins 
-#define D1 1
-#define D2 2 
-#define D3 3                
-#define D4 4
-#define D5 5 
-#define D6 6              
-#define D7 7
+#define CS_ENABLE 0             // falling edge trigger in PIO
+#define RW_ENABLE 1             // active low write enable
 
-#define R0 8                  // register select lines 
-#define R1 9
-#define R2 10 
+#define R0 2                    // register select lines 
+#define R1 3
+#define R2 4 
+
+#define D0 5                    // data pins 
+#define D1 6
+#define D2 7 
+#define D3 8                
+#define D4 9
+#define D5 10 
+#define D6 11              
+#define D7 12
+
+
  
 #define CMDREG 0x00           // registers
 #define CHRREG 0x01
@@ -190,12 +193,13 @@ extern uint bufferClearWordUBound;          // buffer clear function < upper bou
 // --------------------------------------- function declarations ------------------------------------
 
 // config commnds common to all PIO init routines
-void Standard_PIO_Config(PIO pio, uint sm, uint offset, uint pin, uint num_pins, pio_sm_config* config_ptr);
+void Standard_PIO_Config(PIO pio, uint sm, uint offset, uint pin, uint num_pins, bool pin_dir, pio_sm_config* config_ptr);
 
 // initializations for PIO state machines
-void HSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin); 
-void VSYNC_Pin_Init(PIO pio, uint sm, uint offset, uint pin); 
-void PIXEL_Pin_Init(PIO pio, uint sm, uint offset, uint pin); 
+void HSYNC_Pin_Init(PIO pio, uint sm, uint offset); 
+void VSYNC_Pin_Init(PIO pio, uint sm, uint offset); 
+void PIXEL_Pin_Init(PIO pio, uint sm, uint offset); 
+void Data_In_Init(PIO pio, uint sm, uint offset);
 
 // initialization for DMA
 void PIXEL_DMA_Init(PIO pio, uint sm); 
