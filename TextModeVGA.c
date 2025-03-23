@@ -74,17 +74,17 @@ int main() {
 
     for(int j=0; j<255; j++) cmdList[j]=&dummy;     // load some dummy "nop" functions. Prevents system crash on bad command input
     
-    cmdList[0x00] = &cmdAutoIncChar;                // setting command function pointers 
-    cmdList[0x01] = &cmdSetCursor; 
-    cmdList[0x02] = &cmdUse8x16Charset;  
-    cmdList[0x03] = &cmdInvertCharPix;   
-    cmdList[0x04] = &cmdAutoWrap;   
+    cmdList[0x00] = &cmdSetCursor; 
+    cmdList[0x01] = &cmdAutoIncChar;                // setting command function pointers 
+    cmdList[0x02] = &cmdSwitchCharset;  
+    cmdList[0x04] = &cmdInvertCharPix;   
+    cmdList[0x05] = &cmdAutoWrap;   
     
-    cmdList[0x05] = &cmdHome;   
+    cmdList[0x06] = &cmdHome;   
     cmdList[0x08] = &cmdBackspace;
     cmdList[0x09] = &cmdTab;  
     cmdList[0x0A] = &cmdLineFeed;      
-    cmdList[0x0D] = &cmdCarriageReturn;       
+    cmdList[0x0D] = &cmdCarriageReturn;                
    
     cmdList[0x0C] = &cmdClearScreen;  
     cmdList[0x10] = &cmdClearCursorRight;
@@ -522,9 +522,9 @@ void charArraysInit () {
     for (int i = 0; i < 256; i++)                                                                            // copy default 8x16 chars 
         for (int j = 0; j < 16; j++) CHRS8x16[i][j] = TEXTCHARS16[i][j];
 
-    TEXTCHARS = CHRS8x16;                                                                                    // default character set
-    ROWS = 30;
-    CHRHEIGHT = 16;
+    TEXTCHARS = CHRS8x8;                                                                                    // default character set
+    ROWS = 60;
+    CHRHEIGHT = 8;
 
 }
 
@@ -536,9 +536,9 @@ void CURSOR_Init() {
     cursor16 = (unsigned char*) malloc(16 * sizeof(unsigned char));         // 8x16 cursor setup 
     for (int j = 0; j < 16; j++) cursor16[j] = TEXTCHARS16[95][j];
 
-    cursor = cursor16;                                                      // default cursor 
+    cursor = cursor8;                                                       // default cursor 
         
-    timer_hw->alarm[CURSORIRQ] = timer_hw->timerawl + CURSORSPD;             // set time and alarm for cursor irq
+    timer_hw->alarm[CURSORIRQ] = timer_hw->timerawl + CURSORSPD;            // set time and alarm for cursor irq
     timer_hw->inte = 1u << CURSORIRQ; 
     irq_set_exclusive_handler(CURSORIRQ, CURSOR_blink_handler);
     irq_set_enabled(CURSORIRQ, true);

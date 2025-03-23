@@ -97,16 +97,16 @@ Commands
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 output control:
-     
-    0x00    auto increment on character print. Default is on when controller starts. Write any byte to turn on    
-    0x01    view cursor. Default is on when controller starts. Write any byte to turn on
-    0x02    set 8x16 charset. Default is on when controller starts. Write any byte to set to 8x16 chars    
-    0x03    invert character set pixels (tested)        
-    0x04    set auto-warp. Default is on when controller starts. Write any byte to set on (VT100: ^[[?7h)
     
-    NEED output control commands to turn off !!!
+    0x00    toggle view cursor. Default is on when controller starts. Write any byte to toggle (tested 20250323)
+    0x01    toggle auto increment on character print. Default is on when controller starts. Write any byte to toggle (tested 20250323)   
+    0x02    toggle 8x8 / 8x16 charset. Default is 8x8 when controller starts. Write any byte to toggle. Lines lost when switching from 8x8 (tested 20250323) 
 
+            not use 0x03 because ctrl-c is used as break in Basic
 
+    0x04    toggle invert character set pixels (tested 20250323)        
+    0x05    toggle line auto-warp. Default is on when controller starts. Write any byte to toggle (tested 20250323)
+    
     0x??    save cursor position, relative to home position, not impacted by change in row offset (VT100: ^[7)
     0x??    restore cursor position, relative to home position, not impacted by change in row offset (VT100: ^[8)
     
@@ -114,10 +114,10 @@ output control:
         
 
 move cursor:
-
+    0x06    move cursor to top left (home) (tested)  (VT100: ^[[H)
     0x09    horizontal tab right (tested) (ascii)
     0x0?    horizontal tab left (to do!!!)         
-    0x05    move cursor to top left (home) (tested)  (VT100: ^[[H)  
+      
     0x0A    linefeed (tested) (ascii)  
     0x0D    carriage return (tested) (ascii)
   
@@ -234,7 +234,7 @@ void cmdHome (void);
 // output control
 void cmdAutoIncChar(void);              
 void cmdSetCursor(void);
-void cmdUse8x16Charset(void);
+void cmdSwitchCharset(void);
 void cmdInvertCharPix(void); 
 void cmdAutoWrap (void);
 

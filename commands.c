@@ -67,25 +67,38 @@ void cmdTab (void) {
 }
 
 void cmdAutoIncChar (void) { 
-    ChrIncrement = true;      
+    if(ChrIncrement) ChrIncrement = false; else ChrIncrement = true;      
 }
 
 void cmdAutoWrap (void) { 
-    lineWrap = true;      
+    if(lineWrap) lineWrap = false; else lineWrap = true;      
 }
 
 void cmdSetCursor(void) {
-   cursorEnabled = true;
-   irq_set_enabled(CURSORIRQ, true);
+    if(cursorEnabled) {
+        cursorEnabled = false;
+        irq_set_enabled(CURSORIRQ, false);
+    }
+    else {
+        cursorEnabled = true;
+        irq_set_enabled(CURSORIRQ, true);
+    }
 }
 
-void cmdUse8x16Charset(void) {   
+void cmdSwitchCharset(void) {   
+    if(CHRHEIGHT == 8) { 
+        TEXTCHARS = CHRS8x16;
+        ROWS = 30;
+        CHRHEIGHT = 16;
+        cursor = cursor16; 
+    }
+    else {
+        TEXTCHARS = CHRS8x8;
+        ROWS = 60;
+        CHRHEIGHT = 8;
+        cursor = cursor8;
+    }
     
-    TEXTCHARS = CHRS8x16;
-    ROWS = 30;
-    CHRHEIGHT = 16;
-    cursor = cursor16; 
-            
     nextCharCol = 0;        // reset indexes and screen
     nextCharRow = 0;
     charRowOffset = 0;         
